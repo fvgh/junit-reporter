@@ -6,11 +6,12 @@ import org.gradle.api.Task;
 import org.gradle.api.UnknownTaskException;
 
 public class TestHTMLReporterPlugin implements Plugin<Project> {
-	
+
 	@Override
 	public void apply(Project project) {
 		project.getExtensions().create(TestHTMLReporterSettings.settingsExtensionName, TestHTMLReporterSettings.class);
-		TestHTMLReporterPluginTask junit5HTMLReport = project.getTasks().create("junitHtmlReport", TestHTMLReporterPluginTask.class);
+		TestHTMLReporterPluginTask junit5HTMLReport = project.getTasks().create("junitHtmlReport",
+				TestHTMLReporterPluginTask.class);
 
 		addFinalizedBy("test", project, junit5HTMLReport);
 		addFinalizedBy("check", project, junit5HTMLReport);
@@ -24,5 +25,5 @@ public class TestHTMLReporterPlugin implements Plugin<Project> {
 			System.out.println("unable to finalize " + taskName);
 		}
 	}
-	
+
 }

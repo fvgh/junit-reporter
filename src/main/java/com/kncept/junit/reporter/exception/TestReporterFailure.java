@@ -2,6 +2,7 @@ package com.kncept.junit.reporter.exception;
 
 /**
  * Generally an issue with configuration
+ * 
  * @author ebola
  *
  */

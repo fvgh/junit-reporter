@@ -1,6 +1,7 @@
 package com.kncept.junit.reporter.json;
 
 import static com.kncept.junit.reporter.json.JsonUtils.addDelimiters;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;

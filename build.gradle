@@ -3,27 +3,27 @@
 //  gradlew install  -->>  install to local maven repo
 //  gradlew uploadArchives  -->>  upload to sonatype OSS Staging repo
 //  gradlew check  -->>  Performs standard testing
-//  gradlew wrapper -->> re run the gradle wrapper script 
+//  gradlew wrapper -->> re run the gradle wrapper script
 
 buildscript {
-    repositories {
-        mavenLocal()
-        mavenCentral()
-        maven { url "https://plugins.gradle.org/m2/" } 
-    }
-    dependencies {
-    	//previously released version of junit-reporter
-    	classpath 'com.kncept.junit5.reporter:junit-reporter:1.2.0'
-        
-        // https://github.com/srs/gradle-node-plugin/blob/master/docs/node.md
+	repositories {
+		mavenLocal()
+		mavenCentral()
+		maven { url "https://plugins.gradle.org/m2/" }
+	}
+	dependencies {
+		//previously released version of junit-reporter
+		classpath 'com.kncept.junit5.reporter:junit-reporter:1.2.0'
+
+		// https://github.com/srs/gradle-node-plugin/blob/master/docs/node.md
 		classpath 'com.moowork.gradle:gradle-node-plugin:1.2.0'
-    }
+
+		classpath "com.diffplug.spotless:spotless-plugin-gradle:3.16.0-SNAPSHOT"
+	}
 }
 
-plugins {
-	// https://docs.gradle.org/current/userguide/javaGradle_plugin.html
-    id 'java-gradle-plugin'
-}
+plugins { // https://docs.gradle.org/current/userguide/javaGradle_plugin.html
+	id 'java-gradle-plugin' }
 
 apply plugin: 'eclipse'
 apply plugin: 'idea'
@@ -34,6 +34,8 @@ apply plugin: 'com.moowork.node'
 apply plugin: 'maven'
 apply plugin: 'signing'
 
+apply plugin: "com.diffplug.gradle.spotless"
+
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
@@ -43,23 +45,15 @@ version = '2.0.0'
 def jUnit5Version = "5.2.0"
 
 //add embedded maven build
-configurations {
-    mavenEmbedder
-}
+configurations { mavenEmbedder }
 
 //add generated source sets
 sourceSets {
 	// javascript output directory
-	main {
-	    resources.srcDirs += 'generatedsrc/main/resources'
-	}
+	main { resources.srcDirs += 'generatedsrc/main/resources' }
 	//JUnit5
-	test {
-	    resources.srcDirs += 'generatedsrc/test/resources'
-	}
-	pretest {
-		java.srcDirs += 'src/pretest/java'
-	}
+	test { resources.srcDirs += 'generatedsrc/test/resources' }
+	pretest { java.srcDirs += 'src/pretest/java' }
 }
 task initGeneratedDirectories {
 	doFirst {
@@ -74,18 +68,12 @@ task cleanGeneratedDirectories {
 }
 def recursivelyDeleteFile(file) {
 	if (file.directory) {
-		file.eachFile {
-			recursivelyDeleteFile(it)
-		}
+		file.eachFile { recursivelyDeleteFile(it) }
 	}
 	file.delete()
 }
 
-test {
-	useJUnitPlatform {
-		excludeTags 'test-data'
-	}
-}
+test { useJUnitPlatform { excludeTags 'test-data' } }
 
 task compilePretest (type: JavaCompile) {
 	source = sourceSets.pretest.java.srcDirs
@@ -98,28 +86,28 @@ compilePretest.dependsOn compileJava
 // https://github.com/junit-team/junit5/issues/700#issuecomment-283374073
 // http://junit.org/junit5/docs/current/user-guide/#running-tests-console-launcher
 task generateTestData(type: JavaExec) {
-    classpath = project.sourceSets.pretest.runtimeClasspath
-    main 'org.junit.platform.console.ConsoleLauncher'
-    args '--scan-class-path'
-    args '--reports-dir=' + new File(project.projectDir, 'generatedsrc/test/resources/').absolutePath
-    ignoreExitValue true
+	classpath = project.sourceSets.pretest.runtimeClasspath
+	main 'org.junit.platform.console.ConsoleLauncher'
+	args '--scan-class-path'
+	args '--reports-dir=' + new File(project.projectDir, 'generatedsrc/test/resources/').absolutePath
+	ignoreExitValue true
 }
 generateTestData.dependsOn compilePretest
 generateTestData.dependsOn initGeneratedDirectories
 test.dependsOn generateTestData
 
 task reportOnTestData(type: JavaExec) {
-    classpath = project.sourceSets.main.runtimeClasspath
-    main 'com.kncept.junit.reporter.TestReportProcessor'
-    args 'testResultsDir=' + new File(project.projectDir, 'generatedsrc/test/resources/').absolutePath
-    args 'testReportsDir=' + new File(project.projectDir, 'generatedsrc/test/resources/').absolutePath
+	classpath = project.sourceSets.main.runtimeClasspath
+	main 'com.kncept.junit.reporter.TestReportProcessor'
+	args 'testResultsDir=' + new File(project.projectDir, 'generatedsrc/test/resources/').absolutePath
+	args 'testReportsDir=' + new File(project.projectDir, 'generatedsrc/test/resources/').absolutePath
 }
-reportOnTestData.dependsOn generateTestData 
+reportOnTestData.dependsOn generateTestData
 testClasses.dependsOn reportOnTestData
 
 task javadocJar(type: Jar) {
-    classifier = 'javadoc'
-    from javadoc
+	classifier = 'javadoc'
+	from javadoc
 }
 
 javadoc {
@@ -130,45 +118,39 @@ javadoc {
 }
 
 task sourcesJar(type: Jar) {
-    classifier = 'sources'
-    from sourceSets.main.allSource
+	classifier = 'sources'
+	from sourceSets.main.allSource
 }
 
 task testSourcesJar(type: Jar) {
-    classifier = 'testsources'
-    from sourceSets.test.allSource
+	classifier = 'testsources'
+	from sourceSets.test.allSource
 }
 
 jar {
 	manifest {
 		attributes(
-			'Implementation-Title': project.name,
-			'Implementation-Vendor' : 'kncept',
-			'Implementation-Version': project.version,
-			'Implementation-Author': 'Nicholas Krul', //non standard
-			'Created-By': System.getProperty('java.version'),
-			'Built-By': System.getProperty('user.name'),
-			'Built-Date': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
-			'Source-Compatibility': project.sourceCompatibility,
-			'Target-Compatibility': project.targetCompatibility,
-			'Main-Class': 'com.kncept.junit.reporter.TestReportProcessor'
-		)
+				'Implementation-Title': project.name,
+				'Implementation-Vendor' : 'kncept',
+				'Implementation-Version': project.version,
+				'Implementation-Author': 'Nicholas Krul', //non standard
+				'Created-By': System.getProperty('java.version'),
+				'Built-By': System.getProperty('user.name'),
+				'Built-Date': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+				'Source-Compatibility': project.sourceCompatibility,
+				'Target-Compatibility': project.targetCompatibility,
+				'Main-Class': 'com.kncept.junit.reporter.TestReportProcessor'
+				)
 	}
 }
 
-artifacts {
-    archives javadocJar, sourcesJar, testSourcesJar
-}
+artifacts { archives javadocJar, sourcesJar, testSourcesJar }
 
 //Allow building but disable signing if the gpg config isn't available
-signing {
-    sign configurations.archives
-}
+signing { sign configurations.archives }
 signArchives.onlyIf {new File('gradle.properties').exists()}
 
-wrapper {
-	gradleVersion = '4.10'
-}
+wrapper { gradleVersion = '4.10' }
 
 repositories {
 	mavenLocal()
@@ -187,68 +169,68 @@ if (project.hasProperty('ossrhPassword')) {
 uploadArchives.dependsOn check
 
 uploadArchives {
-  repositories {
-    mavenDeployer {
-      beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
-      repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-        authentication(userName: username, password: password)
-      }
-      snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
-        authentication(userName: username, password: password)
-      }
+	repositories {
+		mavenDeployer {
+			beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+			repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+				authentication(userName: username, password: password)
+			}
+			snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+				authentication(userName: username, password: password)
+			}
 
-      pom.project {
-        name 'Junit Reporter'
-        packaging 'jar'
-        // optionally artifactId can be defined here 
-        description 'Produces HTML reports from the Junit xml output'
-        url 'https://github.com/kncept/junit-reporter'
+			pom.project {
+				name 'Junit Reporter'
+				packaging 'jar'
+				// optionally artifactId can be defined here
+				description 'Produces HTML reports from the Junit xml output'
+				url 'https://github.com/kncept/junit-reporter'
 
-        scm {
-          connection 'scm:https://github.com/kncept/junit-reporter.git'
-          developerConnection 'scm:https://github.com/kncept/junit-reporter.git'
-          url 'https://github.com/kncept/junit-reporter'
-        }
+				scm {
+					connection 'scm:https://github.com/kncept/junit-reporter.git'
+					developerConnection 'scm:https://github.com/kncept/junit-reporter.git'
+					url 'https://github.com/kncept/junit-reporter'
+				}
 
-        licenses {
-          license {
-            name 'Eclipse Public License - v 1.0'
-            url 'https://github.com/kncept/junit-reporter/blob/master/LICENSE'
-          }
-        }
+				licenses {
+					license {
+						name 'Eclipse Public License - v 1.0'
+						url 'https://github.com/kncept/junit-reporter/blob/master/LICENSE'
+					}
+				}
 
-        developers {
-          developer {
-            id 'nkrul'
-            name 'Nicholas Krul'
-            email 'nicholas.krul@gmail.com'
-          }
-        }
-      }
-    }
-  }
+				developers {
+					developer {
+						id 'nkrul'
+						name 'Nicholas Krul'
+						email 'nicholas.krul@gmail.com'
+					}
+				}
+			}
+		}
+	}
 }
 
 dependencies {
-    //JUnit5 dependencies
+	//JUnit5 dependencies
 	testCompile "org.junit.jupiter:junit-jupiter-api:${jUnit5Version}"
 	testRuntime "org.junit.jupiter:junit-jupiter-engine:${jUnit5Version}"
-	
+
 	compile "org.apache.maven:maven-plugin-api:3.5.4"
 	compile "org.apache.maven.plugin-tools:maven-plugin-annotations:3.5.2"
-	
+
 	pretestCompile "org.junit.jupiter:junit-jupiter-api:${jUnit5Version}"
 	pretestRuntime "org.junit.jupiter:junit-jupiter-engine:${jUnit5Version}"
 	pretestRuntime "org.junit.platform:junit-platform-console:1.2.0"
-	
+
 	//Maven3 plugin builder
 	mavenEmbedder "org.apache.maven:maven-embedder:3.5.4"
-    mavenEmbedder 'org.slf4j:slf4j-simple:1.7.5'
-    mavenEmbedder "org.apache.maven:maven-compat:3.5.4"
-    mavenEmbedder 'org.eclipse.aether:aether-connector-basic:1.1.0'
-    mavenEmbedder 'org.eclipse.aether:aether-transport-wagon:1.1.0'
-    mavenEmbedder 'org.apache.maven.wagon:wagon-http:3.1.0'
-    mavenEmbedder 'org.apache.maven.wagon:wagon-provider-api:3.1.0'
+	mavenEmbedder 'org.slf4j:slf4j-simple:1.7.5'
+	mavenEmbedder "org.apache.maven:maven-compat:3.5.4"
+	mavenEmbedder 'org.eclipse.aether:aether-connector-basic:1.1.0'
+	mavenEmbedder 'org.eclipse.aether:aether-transport-wagon:1.1.0'
+	mavenEmbedder 'org.apache.maven.wagon:wagon-http:3.1.0'
+	mavenEmbedder 'org.apache.maven.wagon:wagon-provider-api:3.1.0'
 }
 
 
@@ -258,56 +240,53 @@ task generatePluginDescriptor(type: JavaExec, dependsOn: compileJava) {
 
 	//def outputDirectory = new File("generatedsrc/main/resources")
 	//def directory = outputDirectory
-	
+
 	def directory = buildDir.canonicalPath
-    def outputDirectory = compileJava.destinationDir.canonicalPath
+	def outputDirectory = compileJava.destinationDir.canonicalPath
 
 
-    classpath = configurations.mavenEmbedder
-    main = 'org.apache.maven.cli.MavenCli'
-    systemProperties['maven.multiModuleProjectDirectory'] = projectDir
-    args = [
-            '--errors',
-            '--batch-mode',
-            "--file", new File("generatedsrc/main/resources/plugin-pom.xml").canonicalPath,
-            //"-Dmaven.multiModuleProjectDirectory=" + projectDir.canonicalPath, //why is this not working...
-            "org.apache.maven.plugins:maven-plugin-plugin:3.5.2:descriptor"
-    ]
-    doFirst {
-    	pom {
-	        project {
-	        	name "Junit Reporter"
-	            groupId "${project.group}"
-	            artifactId 'junit-reporter'
-	            version "${project.version}"
-	            packaging "maven-plugin"
-	        }
-	    }.withXml {
-	    	asNode().appendNode("build").with {
-	    		appendNode("directory", directory)
-	    		appendNode("outputDirectory", outputDirectory)
-	    		appendNode("plugins").with {
-	    			appendNode("plugin").with {
-	    				appendNode("groupId", "org.apache.maven.plugins")
-	    				appendNode("artifactId", "maven-plugin-plugin")
-	    				appendNode("version", "3.5.2")
-	    				appendNode("configuration").with {
-	    					appendNode("skipErrorNoDescriptorsFound", "true")
-	    				}
-	    				appendNode("executions").with {
-	    					appendNode("execution").with {
-	    						appendNode("id", "mojo-descriptor")
-	    						//appendNode("phase", "process-classes")
-	    						appendNode("goals").with {
-	    							appendNode("goal", "descriptor")
-	    						}
-	    					}
-	    				}
-	    			}
-	    		}
-	    	}
-	    }.writeTo("generatedsrc/main/resources/plugin-pom.xml")
-    }
+	classpath = configurations.mavenEmbedder
+	main = 'org.apache.maven.cli.MavenCli'
+	systemProperties['maven.multiModuleProjectDirectory'] = projectDir
+	args = [
+		'--errors',
+		'--batch-mode',
+		"--file",
+		new File("generatedsrc/main/resources/plugin-pom.xml").canonicalPath,
+		//"-Dmaven.multiModuleProjectDirectory=" + projectDir.canonicalPath, //why is this not working...
+		"org.apache.maven.plugins:maven-plugin-plugin:3.5.2:descriptor"
+	]
+	doFirst {
+		pom {
+			project {
+				name "Junit Reporter"
+				groupId "${project.group}"
+				artifactId 'junit-reporter'
+				version "${project.version}"
+				packaging "maven-plugin"
+			}
+		}.withXml {
+			asNode().appendNode("build").with {
+				appendNode("directory", directory)
+				appendNode("outputDirectory", outputDirectory)
+				appendNode("plugins").with {
+					appendNode("plugin").with {
+						appendNode("groupId", "org.apache.maven.plugins")
+						appendNode("artifactId", "maven-plugin-plugin")
+						appendNode("version", "3.5.2")
+						appendNode("configuration").with { appendNode("skipErrorNoDescriptorsFound", "true") }
+						appendNode("executions").with {
+							appendNode("execution").with {
+								appendNode("id", "mojo-descriptor")
+								//appendNode("phase", "process-classes")
+								appendNode("goals").with { appendNode("goal", "descriptor") }
+							}
+						}
+					}
+				}
+			}
+		}.writeTo("generatedsrc/main/resources/plugin-pom.xml")
+	}
 }
 jar.dependsOn generatePluginDescriptor
 generatePluginDescriptor.dependsOn compileJava
@@ -320,14 +299,14 @@ node {
 
 	// Version of npm to use.
 	npmVersion = '6.2.0'
-  
+
 	//download a version to use.
 	//otherwise this will use npm from the system PATH
 	download = true
 }
 
 task npmBuild(type: NpmTask) {
-  args = ['run', 'build']
+	args = ['run', 'build']
 }
 npmBuild.dependsOn initGeneratedDirectories
 npmBuild.dependsOn npmInstall
@@ -336,3 +315,20 @@ processResources.dependsOn npmBuild
 
 //clean.dependsOn npm_cache_clean
 clean.dependsOn cleanGeneratedDirectories
+
+spotless {
+	groovyGradle {
+		target fileTree('.') { include '**/*.gradle' }
+		paddedCell()
+		greclipse().configFile('gradle/code-style/eclipse-jdt-formatter.xml', 'gradle/code-style/eclipse-groovy-formatter.prefs')
+	}
+	java {
+		importOrderFile 'gradle/code-style/java.importorder'
+		eclipse().configFile 'gradle/code-style/eclipse-jdt-formatter.xml'
+	}
+	xml { eclipse().configFile 'gradle/code-style/eclipse-xml-formatter.prefs' }
+	css { eclipse().configFile 'gradle/code-style/eclipse-css-formatter.prefs' }
+	js { eclipse().configFile 'gradle/code-style/eclipse-js-formatter-cleanup.xml', 'gradle/code-style/eclipse-js-formatter-format.xml' }
+	json { eclipse().configFile 'gradle/code-style/eclipse-json-formatter.prefs' }
+	html { eclipse().configFile 'gradle/code-style/eclipse-html-formatter.prefs' }
+}

@@ -1,0 +1,7 @@
+cleanupClassSelectorCase=1
+cleanupIdSelectorCase=2
+cleanupIdentifierCase=2
+cleanupPropNameCase=2
+cleanupPropValueCase=1
+cleanupSelectorCase=2
+eclipse.preferences.version=1
